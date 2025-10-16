@@ -1,0 +1,17 @@
+docker compose run --name ros2dev ros2 bash
+docker exec -it ros2dev bash
+
+docker exec -it ros2dev bash
+source /opt/ros/humble/setup.bash; colcon build --symlink-install; source install/setup.bash
+
+ros2 run ros_behaviors_fsm finite_state_controller
+
+docker ps -a
+docker stop ros2dev
+docker rm ros2dev
+
+ros2 launch neato2_gazebo empty_world.py
+
+ros2 run rviz2 rviz2
+ros2 launch slam_toolbox online_sync_launch.py
+ros2 launch neato2_gazebo neato_gauntlet_world.py
