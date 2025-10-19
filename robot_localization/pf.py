@@ -180,18 +180,22 @@ class ParticleFilter(Node):
             There are two logical methods for this:
                 (1): compute the mean pose
                 (2): compute the most likely pose (i.e. the mode of the distribution)
-        """
-        # first make sure that the particle weights are normalized
+        """    
         self.normalize_particles()
+        x = sum(p.x * p.w for p in self.particle_cloud)
+        y = sum(p.y * p.w for p in self.particle_cloud)
+        sin_sum = sum(math.sin(p.theta) * p.w for p in self.particle_cloud)
+        cos_sum = sum(math.cos(p.theta) * p.w for p in self.particle_cloud)
+        theta = math.atan2(sin_sum, cos_sum)
 
-        # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
-        # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose()
-        if hasattr(self, 'odom_pose'):
-            self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
-                                                            self.odom_pose)
-        else:
-            self.get_logger().warn("Can't set map->odom transform since no odom data received")
+        q = quaternion_from_euler(0, 0, theta)
+        self.robot_pose = Pose(
+            position=Point(x=x, y=y, z=0.0),
+            orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+    )
+
+    if hasattr(self, 'odom_pose'):
+        self.transform_helper.fix_map_to_odom_transform(self.robot_pose, self.odom_pose)
 
     def update_particles_with_odom(self):
         """ Update the particles using the newly given odometry pose.
@@ -200,19 +204,23 @@ class ParticleFilter(Node):
             when the particles were last updated and the current odometry.
         """
         new_odom_xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
-        # compute the change in x,y,theta since our last update
-        if self.current_odom_xy_theta:
-            old_odom_xy_theta = self.current_odom_xy_theta
-            delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
-                     new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
-                     new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
 
-            self.current_odom_xy_theta = new_odom_xy_theta
-        else:
+        if not self.current_odom_xy_theta:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO: modify particles using delta
+        # change in odom since last update
+        delta_x = new_odom_xy_theta[0] - self.current_odom_xy_theta[0]
+        delta_y = new_odom_xy_theta[1] - self.current_odom_xy_theta[1]
+        delta_theta = self.transform_helper.angle_diff(new_odom_xy_theta[2],
+                                                    self.current_odom_xy_theta[2])
+        self.current_odom_xy_theta = new_odom_xy_theta
+
+        # apply delta to each particle (with noise)
+        for p in self.particle_cloud:
+            p.x += delta_x + np.random.normal(0, 0.02)
+            p.y += delta_y + np.random.normal(0, 0.02)
+            p.theta += delta_theta + np.random.normal(0, 0.01)
 
     def resample_particles(self):
         """ Resample the particles according to the new particle weights.
@@ -222,15 +230,33 @@ class ParticleFilter(Node):
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        # TODO: fill out the rest of the implementation
+        weights = [p.w for p in self.particle_cloud]
+        self.particle_cloud = draw_random_sample(self.particle_cloud, weights, self.n_particles)
+        # add some small random noise to avoid degeneracy
+        for p in self.particle_cloud:
+            p.x += np.random.normal(0, 0.01)
+            p.y += np.random.normal(0, 0.01)
+            p.theta += np.random.normal(0, 0.02)
 
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
             r: the distance readings to obstacles
             theta: the angle relative to the robot frame for each corresponding reading 
         """
-        # TODO: implement this
-        pass
+        sigma = 0.2  # sensor noise parameter
+        for p in self.particle_cloud:
+            weight = 1.0
+            for i in range(0, len(r), 20):  # use every 20th beam for speed
+                if math.isfinite(r[i]):
+                    # predicted obstacle point in map frame
+                    xz = p.x + r[i] * math.cos(p.theta + theta[i])
+                    yz = p.y + r[i] * math.sin(p.theta + theta[i])
+                    dist = self.occupancy_field.get_closest_obstacle_distance(xz, yz)
+                    if math.isfinite(dist):
+                        prob = math.exp(- (dist**2) / (2 * sigma**2))
+                        weight *= prob
+            p.w = weight
+        self.normalize_particles()
 
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter based on a pose estimate.
@@ -245,16 +271,29 @@ class ParticleFilter(Node):
                       particle cloud around.  If this input is omitted, the odometry will be used """
         if xy_theta is None:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
+
+        ((x_min, x_max), (y_min, y_max)) = self.occupancy_field.get_obstacle_bounding_box()
         self.particle_cloud = []
-        # TODO create particles
+
+        for _ in range(self.n_particles):
+            # random x, y within map bounds
+            x = np.random.uniform(x_min, x_max)
+            y = np.random.uniform(y_min, y_max)
+            theta = np.random.uniform(-math.pi, math.pi)
+            w = 1.0
+            self.particle_cloud.append(Particle(x, y, theta, w))
 
         self.normalize_particles()
         self.update_robot_pose()
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # TODO: implement this
-        pass
+        total = sum(p.w for p in self.particle_cloud)
+        if total == 0:
+            # avoid division by zero
+            total = 1e-6
+        for p in self.particle_cloud:
+            p.w /= total
 
     def publish_particles(self, timestamp):
         msg = ParticleCloud()
