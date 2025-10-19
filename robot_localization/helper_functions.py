@@ -93,50 +93,65 @@ class TFHelper(object):
             return d2
 
     def fix_map_to_odom_transform(self, robot_pose, odom_pose):
-        """ This method constantly updates the offset of the map and
-            odometry coordinate systems based on the latest results from
-            the localizer.
+        """Compute map->odom transform from robot and odom poses."""
+        odom_pose_frame = PyKDL.Frame(
+            V=PyKDL.Vector(
+                x=odom_pose.position.x,
+                y=odom_pose.position.y,
+                z=odom_pose.position.z),
+            R=PyKDL.Rotation.Quaternion(
+                x=odom_pose.orientation.x,
+                y=odom_pose.orientation.y,
+                z=odom_pose.orientation.z,
+                w=odom_pose.orientation.w)
+        )
 
-            robot_pose: should be of type geometry_msgs/msg/Pose and represent 
-                the robot's position within the map
-            odom_pose: should be of type geometry_msgs/msg/Pose and represent
-                the robot's position within the odometry coordinate system
-            timestamp: the timestamp to associate with this transform
-            """
-        odom_pose_frame = PyKDL.Frame(V=PyKDL.Vector(x=odom_pose.position.x,
-                                                     y=odom_pose.position.y,
-                                                     z=odom_pose.position.z),
-                                      R=PyKDL.Rotation.Quaternion(x=odom_pose.orientation.x,
-                                                                  y=odom_pose.orientation.y,
-                                                                  z=odom_pose.orientation.z,
-                                                                  w=odom_pose.orientation.w))
-        robot_pose_frame = PyKDL.Frame(V=PyKDL.Vector(x=robot_pose.position.x,
-                                                      y=robot_pose.position.y,
-                                                      z=robot_pose.position.z),
-                                      R=PyKDL.Rotation.Quaternion(x=robot_pose.orientation.x,
-                                                                  y=robot_pose.orientation.y,
-                                                                  z=robot_pose.orientation.z,
-                                                                  w=robot_pose.orientation.w))
+        robot_pose_frame = PyKDL.Frame(
+            V=PyKDL.Vector(
+                x=robot_pose.position.x,
+                y=robot_pose.position.y,
+                z=robot_pose.position.z),
+            R=PyKDL.Rotation.Quaternion(
+                x=robot_pose.orientation.x,
+                y=robot_pose.orientation.y,
+                z=robot_pose.orientation.z,
+                w=robot_pose.orientation.w)
+        )
+
         odom_to_map = robot_pose_frame * PyKDL.Frame.Inverse(odom_pose_frame)
         self.translation = odom_to_map.p
         self.rotation = odom_to_map.M.GetQuaternion()
 
-    def send_last_map_to_odom_transform(self, map_frame, odom_frame, timestamp):
-        if (not hasattr(self, 'translation') or
-            not hasattr(self, 'rotation')):
+        # ✅ remember the time this transform was last updated
+        self.last_transform_time = self.node.get_clock().now()
+        self.node.get_logger().info("Updated map->odom transform.")
+        
+    def send_last_map_to_odom_transform(self, map_frame, odom_frame, timestamp=None):
+        """Broadcast the latest map->odom transform."""
+        if not hasattr(self, "translation") or not hasattr(self, "rotation"):
             return
-        transform = TransformStamped()
-        transform.header.stamp = timestamp.to_msg()
-        transform.header.frame_id = map_frame
-        transform.child_frame_id = odom_frame
-        transform.transform.translation.x = self.translation[0]
-        transform.transform.translation.y = self.translation[1]
-        transform.transform.translation.z = self.translation[2]
-        transform.transform.rotation.x = self.rotation[0]
-        transform.transform.rotation.y = self.rotation[1]
-        transform.transform.rotation.z = self.rotation[2]
-        transform.transform.rotation.w = self.rotation[3]
-        self.tf_broadcaster.sendTransform(transform)
+
+        # ✅ fallback if no scan timestamp was provided
+        if timestamp is None:
+            if hasattr(self, "last_transform_time"):
+                timestamp = self.last_transform_time
+            else:
+                timestamp = self.node.get_clock().now()
+
+        t = TransformStamped()
+        t.header.stamp = timestamp.to_msg()
+        t.header.frame_id = map_frame
+        t.child_frame_id = odom_frame
+        t.transform.translation.x = self.translation[0]
+        t.transform.translation.y = self.translation[1]
+        t.transform.translation.z = self.translation[2]
+        t.transform.rotation.x = self.rotation[0]
+        t.transform.rotation.y = self.rotation[1]
+        t.transform.rotation.z = self.rotation[2]
+        t.transform.rotation.w = self.rotation[3]
+
+        self.tf_broadcaster.sendTransform(t)
+
 
     def get_matching_odom_pose(self, odom_frame, base_frame, timestamp):
         """ Find the odometry position for a given timestamp.  We want to avoid blocking, so if the transform is
