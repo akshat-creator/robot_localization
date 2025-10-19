@@ -15,3 +15,7 @@ ros2 launch neato2_gazebo empty_world.py
 ros2 run rviz2 rviz2
 ros2 launch slam_toolbox online_sync_launch.py
 ros2 launch neato2_gazebo neato_gauntlet_world.py
+
+ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name:
+  data: 'map_name'"
+rviz2 -d src/robot_localization/rviz/turtlebot_bag_files.rviz 

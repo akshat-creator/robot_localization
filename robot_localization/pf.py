@@ -82,7 +82,7 @@ class ParticleFilter(Node):
         self.odom_frame = "odom"  # the name of the odometry coordinate frame
         self.scan_topic = "scan"  # the topic where we will get laser scans from
 
-        self.n_particles = 300  # the number of particles to use
+        self.n_particles = 600          # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
@@ -117,21 +117,30 @@ class ParticleFilter(Node):
         self.occupancy_field = OccupancyField(self)
         self.transform_helper = TFHelper(self)
 
+        self.tf_timer = self.create_timer(0.1, self.pub_latest_transform)
+
+
         # we are using a thread to work around single threaded execution bottleneck
         thread = Thread(target=self.loop_wrapper)
         thread.start()
         self.transform_update_timer = self.create_timer(0.05, self.pub_latest_transform)
 
+
     def pub_latest_transform(self):
-        """This function takes care of sending out the map to odom transform"""
-        if self.last_scan_timestamp is None:
+        """Publish the map->odom transform regularly."""
+        if not hasattr(self.transform_helper, "translation"):
             return
-        postdated_timestamp = Time.from_msg(self.last_scan_timestamp) + Duration(
-            seconds=0.1
-        )
+
+        # Use scan timestamp if available, otherwise current time
+        if self.last_scan_timestamp is None:
+            timestamp = self.get_clock().now()
+        else:
+            timestamp = Time.from_msg(self.last_scan_timestamp) + Duration(seconds=0.1)
+
         self.transform_helper.send_last_map_to_odom_transform(
-            self.map_frame, self.odom_frame, postdated_timestamp
+            self.map_frame, self.odom_frame, timestamp
         )
+
 
     def loop_wrapper(self):
         """This function takes care of calling the run_loop function repeatedly.
@@ -215,13 +224,11 @@ class ParticleFilter(Node):
         q = quaternion_from_euler(0, 0, theta)
         self.robot_pose = Pose(
             position=Point(x=x, y=y, z=0.0),
-            orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3]),
+            orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
         )
 
-        if hasattr(self, "odom_pose"):
-            self.transform_helper.fix_map_to_odom_transform(
-                self.robot_pose, self.odom_pose
-            )
+        if hasattr(self, 'odom_pose'):
+            self.transform_helper.fix_map_to_odom_transform(self.robot_pose, self.odom_pose)
 
     def update_particles_with_odom(self):
         """Update the particles using the newly given odometry pose.
@@ -297,31 +304,45 @@ class ParticleFilter(Node):
         self.initialize_particle_cloud(msg.header.stamp, xy_theta)
 
     def initialize_particle_cloud(self, timestamp, xy_theta=None):
-        """Initialize the particle cloud.
-        Arguments
-        xy_theta: a triple consisting of the mean x, y, and theta (yaw) to initialize the
-                  particle cloud around.  If this input is omitted, the odometry will be used
-        """
-        if xy_theta is None:
-            xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(
-                self.odom_pose
-            )
-
-        ((x_min, x_max), (y_min, y_max)) = (
-            self.occupancy_field.get_obstacle_bounding_box()
-        )
+        """Initialize the particle cloud either around a pose estimate or across the entire map."""
         self.particle_cloud = []
 
-        for _ in range(self.n_particles):
-            # random x, y within map bounds
-            x = np.random.uniform(x_min, x_max)
-            y = np.random.uniform(y_min, y_max)
-            theta = np.random.uniform(-math.pi, math.pi)
-            w = 1.0
-            self.particle_cloud.append(Particle(x, y, theta, w))
+        if xy_theta is None:
+            # --- GLOBAL INITIALIZATION: spread particles across the whole map ---
+            ((x_min, x_max), (y_min, y_max)) = self.occupancy_field.get_obstacle_bounding_box()
+            self.get_logger().info(f"Initializing particles across map: x∈[{x_min:.2f}, {x_max:.2f}], y∈[{y_min:.2f}, {y_max:.2f}]")
 
+            for _ in range(self.n_particles):
+                while True:
+                    x = np.random.uniform(x_min, x_max)
+                    y = np.random.uniform(y_min, y_max)
+                    # Skip points that are too close to obstacles
+                    if self.occupancy_field.get_closest_obstacle_distance(x, y) > 0.1:
+                        break
+                theta = np.random.uniform(-math.pi, math.pi)
+                self.particle_cloud.append(Particle(x, y, theta, 1.0))
+
+            self.get_logger().info(f"Initialized {len(self.particle_cloud)} uniformly across the map.")
+
+        else:
+            # --- LOCAL INITIALIZATION: around RViz 2D pose estimate ---
+            mean_x, mean_y, mean_theta = xy_theta
+            std_x = 0.25
+            std_y = 0.25
+            std_theta = math.radians(15)
+            for _ in range(self.n_particles):
+                x = np.random.normal(mean_x, std_x)
+                y = np.random.normal(mean_y, std_y)
+                theta = np.random.normal(mean_theta, std_theta)
+                self.particle_cloud.append(Particle(x, y, theta, 1.0))
+            self.get_logger().info(f"Initialized {self.n_particles} particles around RViz estimate.")
+
+        # Normalize and publish immediately
         self.normalize_particles()
         self.update_robot_pose()
+        self.publish_particles(timestamp)
+        self.get_logger().info("Published initial particle cloud.")
+
 
     def normalize_particles(self):
         """Make sure the particle weights define a valid distribution (i.e. sum to 1.0)"""
