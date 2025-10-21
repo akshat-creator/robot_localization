@@ -16,7 +16,8 @@ import math
 import time
 import numpy as np
 from occupancy_field import OccupancyField
-from helper_functions import TFHelper, draw_random_sample
+from helper_functions import TFHelper
+from helper_functions import draw_random_sample
 from rclpy.qos import qos_profile_sensor_data
 from angle_helpers import quaternion_from_euler
 
@@ -82,8 +83,10 @@ class ParticleFilter(Node):
         self.odom_frame = "odom"  # the name of the odometry coordinate frame
         self.scan_topic = "scan"  # the topic where we will get laser scans from
 
-        self.n_particles = 600          # the number of particles to use
+        self.n_particles = 300        # the number of particles to use
 
+        self.d_thresh = 0.05             # the amount of linear movement before performing an update
+        self.a_thresh = math.pi/18       # the amount of angular movement before performing an update
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
             math.pi / 6
@@ -199,6 +202,12 @@ class ParticleFilter(Node):
         self.publish_particles(msg.header.stamp)
 
     def moved_far_enough_to_update(self, new_odom_xy_theta):
+        d = math.hypot(new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
+                    new_odom_xy_theta[1] - self.current_odom_xy_theta[1])
+        da = abs(new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
+        self.get_logger().info(f"Δtrans={d:.3f}, Δrot={math.degrees(da):.1f}°")
+        return d > self.d_thresh or da > self.a_thresh
+
         return (
             math.fabs(new_odom_xy_theta[0] - self.current_odom_xy_theta[0])
             > self.d_thresh
@@ -257,6 +266,8 @@ class ParticleFilter(Node):
             p.x += delta_x + np.random.normal(0, 0.02)
             p.y += delta_y + np.random.normal(0, 0.02)
             p.theta += delta_theta + np.random.normal(0, 0.01)
+            self.get_logger().info(f"Δx={delta_x:.3f}, Δy={delta_y:.3f}, Δθ={math.degrees(delta_theta):.1f}°")
+
 
     def resample_particles(self):
         """Resample the particles according to the new particle weights.
