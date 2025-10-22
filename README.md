@@ -26,7 +26,7 @@ moves through an environment.
 
 ## Project Demo
 
-🎥 **Video Demo**: [Link to demo video - upload and add link here]
+🎥 **Video Demo**: [https://youtu.be/1uryYJuzfIA]
 
 ![Particle Filter in Action](images/particle_filter_demo.gif)
 
