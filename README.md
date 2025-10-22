@@ -34,15 +34,23 @@ We tested our algorithm in simulation and using recorded bag files of the MAC 1s
 
 Our particle filter follows the following steps:
 
-1. **Initialization**: Generate a set of particles (hypotheses) randomly
-   distributed across the map
-2. **Motion Update**: Update each particle's pose based on odometry data, adding
-   noise to account for motion uncertainty
-3. **Measurement Update**: Weight each particle based on how well its predicted
-   laser scan matches the actual scan
-4. **Resampling**: Generate a new set of particles by sampling from the current
-   set, with probability proportional to particle weights
+1. **Initialization** (`initialize_particle_cloud`): Generate a set of particles (hypotheses) randomly distributed across the map. Each particle starts with equal weight, representing initial uncertainty.
+2. **Motion Update** (`update_particles_with_odom`):Compute change in odometry (`Δx, Δy, Δθ`). Update each particle by applying this delta plus Gaussian noise (0.02m, 0.01rad) to simulate real-world uncertainty.This predicts where the robot could be after movement.
+3. **Measurement Update** (`(update_particles_with_laser)`):
+Use every 20th laser beam to reduce computation. Transform laser hits into map coordinates based on the particle’s pose. Query occupancy_field.`get_closest_obstacle_distance()` to compare expected vs observed distances. Compute weight with a Gaussian likelihood:
+$$
+w_i = e^{-\frac{d_i^2}{2\sigma^2}}
+$$ 
+- where \( d_i \) is the distance to the closest obstacle and \( \sigma \) represents the sensor noise parameter.
 
+4. **Pose Estimation**: Convert to quaternion and publish as `geometry_msgs/Pose`. WCompute weighted average of particles:
+$$
+x = \sum_i w_i x_i, \quad
+y = \sum_i w_i y_i, \quad
+\theta = \arctan2\!\left(\sum_i w_i \sin\theta_i,\; \sum_i w_i \cos\theta_i\right)
+$$
+
+5. **Resampling** (`resample_particles`): Use helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid sample depletion. This focuses computation on high-probability areas.
 ### System Architecture
 
 ```
@@ -55,11 +63,12 @@ Our particle filter follows the following steps:
 │    /map     │─────▶│              │─────▶│/particle_   │
 │  (Map srv)  │      └──────────────┘      │   cloud     │
 └─────────────┘              │             └─────────────┘
-                             │
-                             ▼
-                     ┌──────────────┐
-                     │ map→odom tf  │
-                     └──────────────┘
+         ▲                   │
+         │                   ▼
+┌──────────────┐      ┌──────────────┐
+│ /initialpose │      │ map→odom tf  │
+│  (from RViz) │      └──────────────┘
+└──────────────┘
 ```
 
 ### Key Components
@@ -105,38 +114,10 @@ Each particle represents a hypothesis of the robot's pose:
 
 ## Design Decisions
 
-### 1. Number of Particles: 300
-
-**Decision**: Use 300 particles as the default particle count.
-
-**Reasoning**:
-
--
-
-**Alternatives Considered**:
-
--
-
-### 2. Laser Scan Downsampling: Every 20th Beam
-
-**Decision**: Use every 20th laser beam (18 beams total from 360) for particle
-weighting.
-
-**Reasoning**:
-
--
-
-**Trade-offs**:
-
--
-
-### 3. Likelihood Field vs. Ray Casting
-
-**Decision**: Use the pre-computed likelihood field (occupancy field) approach.
-
-**Reasoning**:
-
--
+- Number of Particles: 300 — a balance between accuracy and computational cost.
+- Noise Parameters: Tuned empirically to maintain convergence without over-spreading.
+- Selective Laser Sampling (every 20th beam): Trade-off between speed and accuracy.
+- Weighted mean pose estimation: Avoids instability when clusters form.
 
 **Implementation**:
 
@@ -145,74 +126,16 @@ weighting.
 - Each map cell stores the distance to the nearest obstacle
 - Particle weights are computed by querying this field for each laser endpoint
 
-### 4. Noise Parameters
+## Result
 
-**Decision**: Motion noise σ_trans = 0.02m, σ_rot = 0.01rad; Sensor noise σ =
-0.2m
+Initially, the particles spread across the map. As the robot moved, particles far from the correct pose were downweighted, and the cluster of high-weight particles converged near the true robot position. Over time, the filter tracked the robot accurately through the map.
 
-**Reasoning**:
+## Challenges and Lessons Learned
 
--
 
----
+Debugging odometry updates — small sign errors caused a big difference.
 
-## Challenges Faced
 
-### 1.
-
-**Challenge**:
-
-**Solution**:
-
--
-
-### 2.
-
-**Challenge**:
-
-**Solution**:
-
--
-
-### 3.
-
-**Challenge**:
-
-**Solution**:
-
--
-
-### 4.
-
-**Challenge**:
-
-**Solution**:
-
--
-
----
-
-## Results and Performance
-
-### Quantitative Metrics
-
-- **Convergence Time**:
-
-- **Steady-State Error**:
-- **Processing Rate**:
-- **Success Rate**:
-
-### Qualitative Observations
-
--
-
-### Test Environment
-
-- Map: MAC First Floor (structured indoor environment)
-- Robot: Turtlebot4 with 360° Lidar
-- Bag files: Two separate runs covering ~100m of travel
-
----
 
 ## Future Improvements
 
@@ -252,27 +175,6 @@ Extend to SLAM (Simultaneous Localization and Mapping):
 - Implement path planning using localization output
 - Add collision avoidance behaviors
 
----
-
-## Lessons Learned
-
-### Technical Lessons
-
-1.
-
-2.
-
-3.
-
-4.
-
-### Teamwork Lessons
-
-1.
-
-2.
-
-3.
 
 ---
 
@@ -341,6 +243,7 @@ ros2 bag play ~/ros2_ws/src/robot_localization/bags/macfirst_floor_take_1 --cloc
 
 5. **Set initial pose** in RViz using the "2D Pose Estimate" tool
 
+6. Commands for help with docker or running the code can be found in commands.txt
 ---
 
 ## References
