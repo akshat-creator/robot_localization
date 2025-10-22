@@ -1,19 +1,15 @@
 # Robot Localization - Particle Filter Implementation
 
-**Authors**: Akshat Jain, Tabitha Davidson, Owen Himsworth **Date**: October
-2025  
+**Authors**: Akshat Jain, Tabitha Davidson, Owen Himsworth 
 **Course**: Computational Robotics, Olin College
 
 ---
 
 ## Project Goal
 
-The goal of this project was to implement a **Monte Carlo Localization (MCL)**
-system using a particle filter algorithm to enable a mobile robot to determine
-its position and orientation within a known map. The particle filter uses
-odometry data and laser scan measurements to probabilistically(big word I know)
-estimate the robot's pose, allowing it to localize itself in real-time as it
-moves through an environment.
+The goal of this project was to implement a Particle Filter to localize a moving robot on a known map using LiDAR and odometry data.
+Our particle filter estimates the robot’s position and orientation by maintaining a cloud of weighted hypotheses (particles), updating them over time as sensor data is received.
+We tested our algorithm in simulation and using recorded bag files of the MAC 1st floor.
 
 ### Key Objectives:
 
