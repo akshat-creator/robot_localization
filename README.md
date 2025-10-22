@@ -30,10 +30,9 @@ We tested our algorithm in simulation and using recorded bag files of the MAC 1s
 
 ## Implementation Overview
 
-### High-Level Algorithm
+### Algorithm Approach
 
-Our particle filter follows the classic Monte Carlo Localization algorithm with
-four main steps:
+Our particle filter follows the following steps:
 
 1. **Initialization**: Generate a set of particles (hypotheses) randomly
    distributed across the map
