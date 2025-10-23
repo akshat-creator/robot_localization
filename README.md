@@ -116,7 +116,7 @@ Particles with smaller distance (better matches) receive higher weights, while w
 
 #### 4. Resampling (`resample_particles`)
 
-After updating particle weights, the filter performs resampling to focus computational resources on the most likely regions of the map. This step uses the draw_random_sample helper function to perform low-variance resampling, which probabilistically selects particles in proportion to their weights. High-weight particles are more likely to be duplicated, while low-weight ones are often discarded. To maintain diversity and prevent all particles from collapsing onto a single pose, a small amount of Gaussian noise is added to each new particle’s position and orientation after resampling. This ensures that the cloud can continue to explore nearby states and adapt to new sensor information if the robot moves into less certain areas.
+After updating the particle weights, the filter resamples to concentrate particles in areas that best match the sensor data. The draw_random_sample function carries out this process by selecting new particles based on their likelihood—high-weight particles are often chosen multiple times, while low-weight ones tend to drop out. To keep the set from collapsing into a single cluster, a little Gaussian noise is added to each particle’s position and angle after resampling. This noise helps maintain variety in the cloud, allowing the system to stay responsive and recover if the robot’s motion or sensor readings change unexpectedly.
 
 - Implements **low-variance resampling** using the `draw_random_sample` helper
   function
@@ -124,6 +124,8 @@ After updating particle weights, the filter performs resampling to focus computa
 - Adds small random noise after resampling to prevent particle depletion
 
 #### 5. Pose Estimation (`update_robot_pose`)
+
+Once the particles have been updated and resampled, the filter calculates a single best guess of where the Neato is. It does this by taking the weighted average of all the particle positions to find the most likely center point, and then computing the overall heading. This gives a smooth and consistent estimate of the robot’s pose even when the particles are spread out. The final position and orientation are converted into a quaternion and published as a `geometry_msgs/Pose`, while the map→odom transform is updated to keep everything in sync with ROS’s coordinate frames. This step turns the cloud of possible locations into one reliable pose estimate that the rest of the filter can use.
 
 - Computes weighted mean of particle positions
 - Uses circular mean for angular component to handle wraparound
