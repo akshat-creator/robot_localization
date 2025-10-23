@@ -97,13 +97,13 @@ This step moves the particles according to how the Neato actually traveled, base
 
 To handle this, we first rotate the world-frame motion into the robot’s body frame using the robot’s previous heading. This gives a motion vector that’s independent of global orientation. Then, for each particle, we rotate that body-frame motion back into the map frame using the particle’s orientation (θ_p). This two-step transformation ensures that all particles move consistently with the robot’s direction of travel. Finally, we update each particle’s pose by adding this transformed motion plus small Gaussian noise, typically around ±0.02 m for x and y, and ±0.01 rad for θ—to simulate real-world uncertainty like wheel slip or sensor drift. This keeps the particle cloud diverse and helps the filter remain robust even when odometry data isn’t perfect.
 
-<p align="center">
+
 `x_p(new) = x_p(old) + Δx + N(0, 0.02²)  `
 
 `y_p(new) = y_p(old) + Δy + N(0, 0.02²)  `
 
 `θ_p(new) = θ_p(old) + Δθ + N(0, 0.01²)`
-</p>
+
 
 - Noise parameters:
   - Translation: `σ = 0.02 m`
@@ -113,9 +113,9 @@ To handle this, we first rotate the world-frame motion into the robot’s body f
 
 The sensor model refines particle weights based on how well each one’s predicted LiDAR scan matches the real environment. To make the computation faster, the algorithm uses every 20th laser beam instead of all 360. For each particle, it transforms the selected laser beams into the map frame using the particle’s position and orientation. Then, it uses the occupancy_field.get_closest_obstacle_distance() method to find how far each predicted beam endpoint is from the nearest obstacle in the map. This distance represents how different the predicted environment is from what the robot actually sees. Each particle’s weight is then computed using a Gaussian likelihood function:
 
-<p align="center">
+
 `wᵢ = exp(−dᵢ² / (2σ²))`
-</p>
+
 
 Particles with smaller distance (better matches) receive higher weights, while worse aligned ones are downweighted. The parameter sigma typically around 0.2 m, represents the expected sensor noise. This process allows the particle filter to focus on map features that match real observations, improving localization accuracy over time.
 
