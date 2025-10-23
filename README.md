@@ -60,6 +60,7 @@ We use every 20th laser beam to reduce computation. Transform laser hits into ma
 6. **Publishing**(`publish_particles`) We then update the estimate of the neato given the new particles, update the map to odom transform and publish particle cloud with new weighted particle set for visualization and pose estimation.
 ### System Architecture
 
+<img width="960" height="680" alt="Blank diagram(1)" src="https://github.com/user-attachments/assets/fd793769-88cc-494c-b4ce-52d13954ec41" />
 
 ```
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
