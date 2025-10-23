@@ -32,18 +32,6 @@ We tested our algorithm in simulation and using recorded bag files of the MAC 1s
 
 ## Implementation Overview
 
-Methodology:
-
-Our particle filter works by doing these steps in methodology:
-
-1. Initialises a particle cloud randomly in the map or localised around an initial neato/robot guess
-2. Normalises the particle weights and sets all particle weights equal so the distribution sums to one.
-3. Applies motion model updating particles’ pose based on odometry and Gaussian motion noise
-4. Receives LIDAR data and compares predicted beam endpoints to the map using the likelihood field model.
-Computers weights assigning higher weights to particles whose predicted beam endpoints are closer based on closer distance objects
-Normalizes, reweights and resamples particles so they form a proper posterior distribution 
-Publish particle cloud and output the new weighted particle set for visualization and pose estimation.
-
 
 ### Algorithm Approach
 
@@ -62,11 +50,14 @@ $$
 $$
 x = \sum_i w_i x_i, \quad
 y = \sum_i w_i y_i, \quad
-\theta = \arctan2\!\left(\sum_i w_i \sin\theta_i,\; \sum_i w_i \cos\theta_i\right)
 $$
+\theta = \arctan2\left(\sum_i w_i \sin\theta_i,\; \sum_i w_i \cos\theta_i\right)
+$$
+
 
 5. **Resampling** (`resample_particles`): We use the helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid maintain diverity in the sample. This focuses computation on higher probability areas.
 ### System Architecture
+6. **Publishing** We then update the estimate of the neato given the new particles, update the map to odom transform and publish particle cloud with new weighted particle set for visualization and pose estimation.
 
 ```
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
