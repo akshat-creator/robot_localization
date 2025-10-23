@@ -26,7 +26,11 @@ We tested our algorithm in simulation and using recorded bag files of the MAC 1s
 
 🎥 **Video Demo**: [https://youtu.be/1uryYJuzfIA]
 
-![Particle Filter in Action](images/particle_filter_demo.gif)
+![Particle Filter](/static/filter_in_action.png)
+
+Initial Testing of the Filter
+![Particle Filter](/static/mac_final.png)
+
 
 ---
 
