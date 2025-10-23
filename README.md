@@ -103,6 +103,11 @@ To handle this, we first rotate the world-frame motion into the robot’s body f
 
 #### 3. Sensor Model (`update_particles_with_laser`)
 
+The sensor model refines particle weights based on how well each one’s predicted LiDAR scan matches the real environment. To make the computation faster, the algorithm uses every 20th laser beam instead of all 360. For each particle, it transforms the selected laser beams into the map frame using the particle’s position and orientation. Then, it uses the occupancy_field.get_closest_obstacle_distance() method to find how far each predicted beam endpoint is from the nearest obstacle in the map. This distance represents how different the predicted environment is from what the robot actually sees. Each particle’s weight is then computed using a Gaussian likelihood function:
+
+
+Particles with smaller distance (better matches) receive higher weights, while worse aligned ones are downweighted. The parameter sigma typically around 0.2 m, represents the expected sensor noise. This process allows the particle filter to focus on map features that match real observations, improving localization accuracy over time.
+
 - Uses a **likelihood field** for efficient computation
 - For each particle, projects laser scan points into the map frame
 - Compares predicted obstacle distances with actual map obstacles
@@ -110,6 +115,8 @@ To handle this, we first rotate the world-frame motion into the robot’s body f
 - Performance optimization: uses every 20th laser beam (instead of all 360)
 
 #### 4. Resampling (`resample_particles`)
+
+After updating particle weights, the filter performs resampling to focus computational resources on the most likely regions of the map. This step uses the draw_random_sample helper function to perform low-variance resampling, which probabilistically selects particles in proportion to their weights. High-weight particles are more likely to be duplicated, while low-weight ones are often discarded. To maintain diversity and prevent all particles from collapsing onto a single pose, a small amount of Gaussian noise is added to each new particle’s position and orientation after resampling. This ensures that the cloud can continue to explore nearby states and adapt to new sensor information if the robot moves into less certain areas.
 
 - Implements **low-variance resampling** using the `draw_random_sample` helper
   function
