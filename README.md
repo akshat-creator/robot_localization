@@ -118,7 +118,7 @@ Each particle represents a hypothesis of the robot's pose:
 
 ## Design Decisions
 
-- Number of Particles: 500 — a balance between accuracy and computational cost.
+- Number of Particles: 500 - so we can have a balance accuracy and computational cost.
 - Noise Parameters: Tuned empirically to maintain convergence without over-spreading.
 - Selective Laser Sampling (every 20th beam): Trade-off between speed and accuracy.
 - Weighted mean pose estimation: Avoids instability when clusters form.
@@ -141,6 +141,9 @@ Initially, the particles spread across the map. As the robot moved, particles fa
 - Test incrementally — verifying each step (motion update, laser update, etc.) independently is crucial.
 - More particles help
 - Transforms are difficult to implement
+
+One of the main challenges in getting this to work correctly was making sure the map-to-odom transform was properly updated after each pose estimation step. Early on, small timing mismatches between scan timestamps and odometry transforms caused no poses to show up in RViz, which was very confusing. Another issue was under-sampling—starting with too few particles (we started at around 200) made the filter converge to completley the wrong area, sometimes even off of the map. Increasing the particle count to 500 and ensuring weights were normalized correctly solved much of that instability. Getting these parameters balanced—enough particles for accuracy but not so many that computation slowed down was key to achieving a smoother, and more stable localization.
+  
 ### Future Improvements
 
 If we had more time, there are several areas we would want to explore to make our particle filter more efficient and robust:
