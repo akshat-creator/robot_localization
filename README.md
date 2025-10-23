@@ -43,16 +43,14 @@ Our particle filter follows the following steps:
 We use every 20th laser beam to reduce computation. Transform laser hits into map coordinates based on the particle’s pose. We then query the occupancy_field.`get_closest_obstacle_distance()` to compare expected vs observed distances. Compute weight with a Gaussian likelihood:
 `wᵢ = exp(−dᵢ² / (2σ²))`
 
-- where \( d_i \) is the distance to the closest obstacle and \( \sigma \) represents the sensor noise parameter.
+- where `dᵢ`  is the distance to the closest obstacle and `sigma`  represents the sensor noise parameter.
 
 4. **Pose Estimation**: Convert to quaternion and publish as `geometry_msgs/Pose`. We compute weighted average of particles:
 
-x = \sum_i w_i x_i, \quad
-y = \sum_i w_i y_i, \quad
+`x = Σ wᵢ xᵢ`
+`y = Σ wᵢ yᵢ`
 
-\theta = \arctan2\left(\sum_i w_i \sin\theta_i,\; \sum_i w_i \cos\theta_i\right)
-$$
-
+`θ = atan2(Σ wᵢ sinθᵢ, Σ wᵢ cosθᵢ)`
 
 5. **Resampling** (`resample_particles`): We use the helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid maintain diverity in the sample. This focuses computation on higher probability areas.
 6. **Publishing**(`publish_particles`) We then update the estimate of the neato given the new particles, update the map to odom transform and publish particle cloud with new weighted particle set for visualization and pose estimation.
