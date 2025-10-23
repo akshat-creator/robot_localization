@@ -47,16 +47,16 @@ $$
 - where \( d_i \) is the distance to the closest obstacle and \( \sigma \) represents the sensor noise parameter.
 
 4. **Pose Estimation**: Convert to quaternion and publish as `geometry_msgs/Pose`. We compute weighted average of particles:
-$$
+
 x = \sum_i w_i x_i, \quad
 y = \sum_i w_i y_i, \quad
-$$
+
 \theta = \arctan2\left(\sum_i w_i \sin\theta_i,\; \sum_i w_i \cos\theta_i\right)
 $$
 
 
 5. **Resampling** (`resample_particles`): We use the helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid maintain diverity in the sample. This focuses computation on higher probability areas.
-6. **Publishing** We then update the estimate of the neato given the new particles, update the map to odom transform and publish particle cloud with new weighted particle set for visualization and pose estimation.
+6. **Publishing**(`publish_particles`) We then update the estimate of the neato given the new particles, update the map to odom transform and publish particle cloud with new weighted particle set for visualization and pose estimation.
 ### System Architecture
 
 
