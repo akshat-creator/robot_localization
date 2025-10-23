@@ -56,8 +56,9 @@ $$
 
 
 5. **Resampling** (`resample_particles`): We use the helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid maintain diverity in the sample. This focuses computation on higher probability areas.
-### System Architecture
 6. **Publishing** We then update the estimate of the neato given the new particles, update the map to odom transform and publish particle cloud with new weighted particle set for visualization and pose estimation.
+### System Architecture
+
 
 ```
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
