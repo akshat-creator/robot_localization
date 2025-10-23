@@ -41,9 +41,8 @@ Our particle filter follows the following steps:
 2. **Motion Update** (`update_particles_with_odom`): We compute change in odometry (`Δx, Δy, Δθ`) and update each particle by applying this delta plus Gaussian noise (+/- 0.02m, 0.01rad) to simulate real-world uncertainty.This predicts where the robot could be after movement.
 3. **Measurement Update** (`(update_particles_with_laser)`):
 We use every 20th laser beam to reduce computation. Transform laser hits into map coordinates based on the particle’s pose. We then query the occupancy_field.`get_closest_obstacle_distance()` to compare expected vs observed distances. Compute weight with a Gaussian likelihood:
-$
-w_i = e^{-\frac{d_i^2}{2\sigma^2}}
-$
+`wᵢ = exp(−dᵢ² / (2σ²))`
+
 - where \( d_i \) is the distance to the closest obstacle and \( \sigma \) represents the sensor noise parameter.
 
 4. **Pose Estimation**: Convert to quaternion and publish as `geometry_msgs/Pose`. We compute weighted average of particles:
