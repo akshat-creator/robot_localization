@@ -38,7 +38,7 @@ We tested our algorithm in simulation and using recorded bag files of the MAC 1s
 Our particle filter follows the following steps:
 
 1. **Initialization** (`initialize_particle_cloud`): We generate a set of particles (neato position hypotheses) randomly distributed across the map or distributed around an initial guess we give. Each particle starts with equal weight, representing initial uncertainty and so the dsitribution sums up to one.
-2. **Motion Update** (`update_particles_with_odom`): We compute change in odometry (`Δx, Δy, Δθ`) and update each particle by applying this delta plus Gaussian noise (+/- 0.02m, 0.01rad) to simulate real-world uncertainty.This predicts where the robot could be after movement.
+2. **Motion Update** (`update_particles_with_odom`): We compute change in odometry (`Δx, Δy, Δθ`) and update each particle by applying this delta plus Gaussian noise `(+/- 0.02m, 0.01rad)` to simulate real-world uncertainty.This predicts where the robot could be after movement.
 3. **Measurement Update** (`(update_particles_with_laser)`):
 We use every 20th laser beam to reduce computation. Transform laser hits into map coordinates based on the particle’s pose. We then query the occupancy_field.`get_closest_obstacle_distance()` to compare expected vs observed distances. Compute weight with a Gaussian likelihood:
 `wᵢ = exp(−dᵢ² / (2σ²))`
