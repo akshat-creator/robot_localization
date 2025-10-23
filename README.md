@@ -1,14 +1,16 @@
 # Robot Localization - Particle Filter Implementation
 
-**Authors**: Akshat Jain, Tabitha Davidson, Owen Himsworth 
+**Authors**: Akshat Jain, Tabitha Davison, Owen Himsworth 
 **Course**: Computational Robotics, Olin College
 
 ---
 
 ## Project Goal
 
-The goal of this project was to implement a Particle Filter to localize a moving robot on a known map using LiDAR and odometry data.
-Our particle filter estimates the robot’s position and orientation by maintaining a cloud of weighted hypotheses (particles), updating them over time as sensor data is received.
+This project implements a particle filter algorithm to estimate a robot’s position within a known map. 
+Our system maintains a cloud of weighted particles representing possible robot locations and then uses Lidar sensor measurements to iteratively predict, 
+correct and resample estimates of position and orientation until we have successfully converged on the Neato's position.
+
 We tested our algorithm in simulation and using recorded bag files of the MAC 1st floor.
 
 ### Key Objectives:
@@ -30,27 +32,40 @@ We tested our algorithm in simulation and using recorded bag files of the MAC 1s
 
 ## Implementation Overview
 
+Methodology:
+
+Our particle filter works by doing these steps in methodology:
+
+1. Initialises a particle cloud randomly in the map or localised around an initial neato/robot guess
+2. Normalises the particle weights and sets all particle weights equal so the distribution sums to one.
+3. Applies motion model updating particles’ pose based on odometry and Gaussian motion noise
+4. Receives LIDAR data and compares predicted beam endpoints to the map using the likelihood field model.
+Computers weights assigning higher weights to particles whose predicted beam endpoints are closer based on closer distance objects
+Normalizes, reweights and resamples particles so they form a proper posterior distribution 
+Publish particle cloud and output the new weighted particle set for visualization and pose estimation.
+
+
 ### Algorithm Approach
 
 Our particle filter follows the following steps:
 
-1. **Initialization** (`initialize_particle_cloud`): Generate a set of particles (hypotheses) randomly distributed across the map. Each particle starts with equal weight, representing initial uncertainty.
-2. **Motion Update** (`update_particles_with_odom`):Compute change in odometry (`Δx, Δy, Δθ`). Update each particle by applying this delta plus Gaussian noise (0.02m, 0.01rad) to simulate real-world uncertainty.This predicts where the robot could be after movement.
+1. **Initialization** (`initialize_particle_cloud`): We generate a set of particles (neato position hypotheses) randomly distributed across the map or distributed around an initial guess we give. Each particle starts with equal weight, representing initial uncertainty and so the dsitribution sums up to one.
+2. **Motion Update** (`update_particles_with_odom`): We compute change in odometry (`Δx, Δy, Δθ`) and update each particle by applying this delta plus Gaussian noise (+/- 0.02m, 0.01rad) to simulate real-world uncertainty.This predicts where the robot could be after movement.
 3. **Measurement Update** (`(update_particles_with_laser)`):
-Use every 20th laser beam to reduce computation. Transform laser hits into map coordinates based on the particle’s pose. Query occupancy_field.`get_closest_obstacle_distance()` to compare expected vs observed distances. Compute weight with a Gaussian likelihood:
+We use every 20th laser beam to reduce computation. Transform laser hits into map coordinates based on the particle’s pose. We then query the occupancy_field.`get_closest_obstacle_distance()` to compare expected vs observed distances. Compute weight with a Gaussian likelihood:
 $$
 w_i = e^{-\frac{d_i^2}{2\sigma^2}}
 $$ 
 - where \( d_i \) is the distance to the closest obstacle and \( \sigma \) represents the sensor noise parameter.
 
-4. **Pose Estimation**: Convert to quaternion and publish as `geometry_msgs/Pose`. WCompute weighted average of particles:
+4. **Pose Estimation**: Convert to quaternion and publish as `geometry_msgs/Pose`. We compute weighted average of particles:
 $$
 x = \sum_i w_i x_i, \quad
 y = \sum_i w_i y_i, \quad
 \theta = \arctan2\!\left(\sum_i w_i \sin\theta_i,\; \sum_i w_i \cos\theta_i\right)
 $$
 
-5. **Resampling** (`resample_particles`): Use helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid sample depletion. This focuses computation on high-probability areas.
+5. **Resampling** (`resample_particles`): We use the helper draw_random_sample to resample particles based on their weights. Add small Gaussian noise to x, y, θ to avoid maintain diverity in the sample. This focuses computation on higher probability areas.
 ### System Architecture
 
 ```
