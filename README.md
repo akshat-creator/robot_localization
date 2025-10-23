@@ -112,6 +112,9 @@ To handle this, we first rotate the world-frame motion into the robot’s body f
 
 The sensor model refines particle weights based on how well each one’s predicted LiDAR scan matches the real environment. To make the computation faster, the algorithm uses every 20th laser beam instead of all 360. For each particle, it transforms the selected laser beams into the map frame using the particle’s position and orientation. Then, it uses the occupancy_field.get_closest_obstacle_distance() method to find how far each predicted beam endpoint is from the nearest obstacle in the map. This distance represents how different the predicted environment is from what the robot actually sees. Each particle’s weight is then computed using a Gaussian likelihood function:
 
+<p align="center">
+wᵢ = exp(−dᵢ² / (2σ²))
+</p>
 
 Particles with smaller distance (better matches) receive higher weights, while worse aligned ones are downweighted. The parameter sigma typically around 0.2 m, represents the expected sensor noise. This process allows the particle filter to focus on map features that match real observations, improving localization accuracy over time.
 
