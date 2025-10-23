@@ -240,17 +240,6 @@ ros2 bag play ~/ros2_ws/src/robot_localization/bags/macfirst_floor_take_1 --cloc
 5. **Set initial pose** in RViz using the "2D Pose Estimate" tool
 
 6. Commands for help with docker or running the code can be found in commands.txt
----
-
-## References
-
-- **Particle Filter Overview**:
-  [Probabilistic Robotics (Thrun, Burgard, Fox)](http://www.probabilistic-robotics.org/)
-- **ROS2 Navigation**: [Nav2 Documentation](https://navigation.ros.org/)
-- **Likelihood Field Model**:
-  [Pieter Abbeel's Lecture Slides](https://people.eecs.berkeley.edu/~pabbeel/cs287-fa19/slides/Lec6-ParticleFilters.pdf)
-- **Course Resources**:
-  [CompRobo at Olin College](https://comprobo24.github.io/)
 
 ---
 
