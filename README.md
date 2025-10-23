@@ -83,6 +83,8 @@ We use every 20th laser beam to reduce computation. Transform laser hits into ma
 
 #### 1. Particle Representation (`Particle` class)
 
+In this stage, we set up our initial guesses about where the Neato might be on the map. The code checks whether we have an initial pose estimate from RViz or falls back to odometry if we don’t. Using the obstacle map’s bounding box, it randomly generates 300 particles across the valid area of the map. Each particle has a position, orientation and weight defining a possible pose for the robot. Since we have no reason to prefer any particle at the start, all are given equal weights of 1.0, and then the weights are normalized so they form a valid probability distribution that sums to one. This random scattering of particles captures our initial uncertainty about the Neato’s position, ensuring that even if our guess is off, some particles are likely to be close to the true pose and will be converged during later updates.
+
 Each particle represents a hypothesis of the robot's pose:
 
 - **Position**: (x, y) coordinates in the map frame
