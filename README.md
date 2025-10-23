@@ -91,6 +91,10 @@ Each particle represents a hypothesis of the robot's pose:
 
 #### 2. Motion Model (`update_particles_with_odom`)
 
+This step moves the particles according to how the Neato actually traveled, based on odometry data. The odometry gives us a change in position and orientation (Δx, Δy, and Δθ), but these values are measured in the world frame. To correctly apply this motion to each particle, which has its own orientation, we need to first show the movement in the robot’s body frame and then reapply it in the particle’s frame. The same world-frame displacement doesn’t mean the same motion for every particle, because each particle faces a different direction.
+
+To handle this, we first rotate the world-frame motion into the robot’s body frame using the robot’s previous heading. This gives a motion vector that’s independent of global orientation. Then, for each particle, we rotate that body-frame motion back into the map frame using the particle’s orientation (θ_p). This two-step transformation ensures that all particles move consistently with the robot’s direction of travel. Finally, we update each particle’s pose by adding this transformed motion plus small Gaussian noise—typically around ±0.02 m for x and y, and ±0.01 rad for θ—to simulate real-world uncertainty like wheel slip or sensor drift. This keeps the particle cloud diverse and helps the filter remain robust even when odometry data isn’t perfect.
+
 - Computes the change in pose from consecutive odometry readings
 - Applies this motion to each particle with added Gaussian noise
 - Noise parameters:
