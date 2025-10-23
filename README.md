@@ -99,7 +99,9 @@ To handle this, we first rotate the world-frame motion into the robot’s body f
 
 
 `x_p(new) = x_p(old) + Δx + N(0, 0.02²)  `
+
 `y_p(new) = y_p(old) + Δy + N(0, 0.02²)  `
+
 `θ_p(new) = θ_p(old) + Δθ + N(0, 0.01²)`
 
 - Noise parameters:
