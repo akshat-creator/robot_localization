@@ -114,7 +114,7 @@ Each particle represents a hypothesis of the robot's pose:
 
 ## Design Decisions
 
-- Number of Particles: 300 — a balance between accuracy and computational cost.
+- Number of Particles: 500 — a balance between accuracy and computational cost.
 - Noise Parameters: Tuned empirically to maintain convergence without over-spreading.
 - Selective Laser Sampling (every 20th beam): Trade-off between speed and accuracy.
 - Weighted mean pose estimation: Avoids instability when clusters form.
@@ -128,53 +128,38 @@ Each particle represents a hypothesis of the robot's pose:
 
 ## Result
 
-Initially, the particles spread across the map. As the robot moved, particles far from the correct pose were downweighted, and the cluster of high-weight particles converged near the true robot position. Over time, the filter tracked the robot accurately through the map.
+Initially, the particles spread across the map. As the robot moved, particles far from the correct pose were down weighted, and the cluster of high-weight particles converged near the true robot position. Over time, the filter tracked the robot accurately through the map.
 
 ## Challenges and Lessons Learned
 
+- Debugging odometry updates — small sign errors caused a big difference.
+- Visualization is key — seeing the particle cloud helps immediately diagnose logic bugs.
+- Test incrementally — verifying each step (motion update, laser update, etc.) independently is crucial.
+- More particles help
+- Transforms are difficult to implement
+### Future Improvements
 
-Debugging odometry updates — small sign errors caused a big difference.
+If we had more time, there are several areas we would want to explore to make our particle filter more efficient and robust:
 
+1. **Adaptive Particle Count (KLD-Sampling)**  
+   Right now, the number of particles is fixed at 500, which works but isn’t always optimal.  
+   We’d like to dynamically adjust the number of particles based on the robot’s pose uncertainty—using more particles when localization confidence is low and fewer when it’s high.  
+   This would improve computational efficiency while maintaining accuracy.
 
+2. **Improved Sensor Model**  
+   Our current likelihood field model samples every 20th laser beam for performance reasons.  
+   A more advanced version could use all beams (or weighted subsets) and possibly run the likelihood calculations in parallel using GPU acceleration.  
+   We’d also be interested in fusing data from other sensors, like the IMU, to make localization more robust in feature-sparse areas.
 
-## Future Improvements
+3. **Map Update Capability (Toward SLAM)**  
+   Right now, our particle filter assumes a static, known map.  
+   A natural next step would be to extend this into a full SLAM system by updating the map based on mismatches between observed and expected laser data.  
+   Handling dynamic obstacles or small environmental changes would make the system much more flexible.
 
-Given more time, here are enhancements we would implement:
-
-### 1. Adaptive Particle Count (KLD-Sampling)
-
-Dynamically adjust the number of particles based on pose uncertainty. Use fewer
-particles when well-localized, more when uncertain. This could improve
-efficiency while maintaining robustness.
-
-### 2. Improved Sensor Model
-
-- Use actual beam endpoints rather than downsampling
-- Implement GPU acceleration for parallel likelihood computation
-- Add multi-modal sensor fusion (incorporate IMU data)
-
-### 3. Global Localization
-
-Enhance the kidnapped robot problem handling with:
-
-- Multiple hypothesis tracking
-- Mixture of uniform and focused initialization
-- Automatic recovery detection
-
-### 4. Map Update Capability
-
-Extend to SLAM (Simultaneous Localization and Mapping):
-
-- Update map based on inconsistencies between scans and map
-- Handle dynamic obstacles
-- Detect and respond to map changes
-
-### 5. Integration with Navigation Stack
-
-- Connect to ROS2 Nav2 for autonomous navigation
-- Implement path planning using localization output
-- Add collision avoidance behaviors
-
+5. **Integration with the ROS2 Navigation Stack**  
+   Finally, we’d like to tie our localization system into ROS2’s Nav2 stack.  
+   With localization feeding into a planner, we could test full autonomous navigation and collision avoidance.  
+   This would demonstrate how our localization module fits into a complete robot autonomy pipeline.
 
 ---
 
