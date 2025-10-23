@@ -61,25 +61,10 @@ We use every 20th laser beam to reduce computation. Transform laser hits into ma
 ### System Architecture
 
 
+<p align="center">
 <img width="700" height="500" alt="Blank diagram(2)" src="https://github.com/user-attachments/assets/99e6ac9b-eb44-4532-8bbb-7d24e3d090c4" />
+</p>
 
-```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   /scan     │─────▶│              │      │   /odom     │
-│  (Lidar)    │      │   Particle   │◀─────│ (Odometry)  │
-└─────────────┘      │    Filter    │      └─────────────┘
-                     │              │
-┌─────────────┐      │   (pf.py)    │      ┌─────────────┐
-│    /map     │─────▶│              │─────▶│/particle_   │
-│  (Map srv)  │      └──────────────┘      │   cloud     │
-└─────────────┘              │             └─────────────┘
-         ▲                   │
-         │                   ▼
-┌──────────────┐      ┌──────────────┐
-│ /initialpose │      │ map→odom tf  │
-│  (from RViz) │      └──────────────┘
-└──────────────┘
-```
 
 ### Key Components
 
